@@ -147,22 +147,9 @@ class Report:
                 f"{prompt}: \n{options}"
             ]
 
-        # Imminent danger selected
-        if self.state == State.IMMINENT_DANGER:
+        # Prompt additional info
+        if self.state in (State.IMMINENT_DANGER, State.FALSE_PROFILE, State.SCAM_SPAM, State.OFFENSIVE_CONTENT):
             return self.prompt_additional_info(message.content)
-
-        # Inauthentic or underage profile selected
-        if self.state == State.FALSE_PROFILE:
-            return self.prompt_additional_info(message.content)
-
-        # Scam or spam
-        if self.state == State.SCAM_SPAM:
-            return self.prompt_additional_info(message.content)
-
-        # Inappropriate or offensive content
-        if self.state == State.OFFENSIVE_CONTENT:
-            return self.prompt_additional_info(message.content)
-            
 
         if self.state == State.MORE_INFO_OPTION:
             self.details["Additional_info"] = message.content
@@ -186,7 +173,7 @@ class Report:
             messages = re.findall(r'\d+', message)
             self.details["Relevant danger/concern(s)"] = [self.prompt_dict[self.state][int(m) - 1] for m in messages]
         else:
-            self.details["Relevant danger/concern(s)"] = self.prompt_dict[self.state][int(message)]
+            self.details["Relevant danger/concern(s)"] = self.prompt_dict[self.state][int(message) - 1]
         # Craft response
         to_return = "Additional information (optional): "
         if self.state == State.IMMINENT_DANGER:
@@ -197,8 +184,15 @@ class Report:
             to_return
         ]
 
+    # def to_send(self):
+    #     return self.state == State.TO_SEND
+
     def to_send(self):
-        return self.state == State.TO_SEND
+        is_to_send = self.state == State.TO_SEND
+        if is_to_send:
+            self.state = State.REPORT_COMPLETE  # Mark as complete
+        return is_to_send
+
 
     def get_details(self):
         return self.details
