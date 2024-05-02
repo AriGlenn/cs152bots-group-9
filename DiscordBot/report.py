@@ -8,6 +8,14 @@ class State(Enum):
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
 
+    IMMINENT_DANGER = auto()
+    FALSE_PROFILE = auto()
+    SCAM_SPAM = auto()
+    OFFENSIVE_CONTENT = auto()
+
+    TO_SEND = auto()
+    MORE_INFO_OPTION = auto()
+
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
@@ -17,6 +25,62 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        self.details = {}
+        self.report_type_state = None
+        self.type_report_dict = {
+            "1": {
+                "Reason": "Imminent danger",
+                "State": State.IMMINENT_DANGER,
+                "Prompt": "Please select the relevant danger: "
+            },
+            "2": {
+                "Reason": "False profile",
+                "State": State.FALSE_PROFILE,
+                "Prompt": "Please select the type of concern: "
+            },
+            "3": {   
+                "Reason": "Scam or spam",
+                "State": State.SCAM_SPAM,
+                "Prompt": "Please select the type of concern: "
+            },
+            "4": {
+                "Reason": "Inappropriate or offensive content",
+                "State": State.OFFENSIVE_CONTENT,
+                "Prompt": "Please select the type(s) of concern: "
+            },
+            "5": {
+                "Reason": "Other",
+                "State": State.MORE_INFO_OPTION,
+                "Prompt": "Please describe the reason for the report: "
+            }
+        }
+        # Dictionary (state, number --> Text)
+        self.prompt_dict = {
+            State.IMMINENT_DANGER : [
+                "Person is threatening self harm or suicide",
+                "Person is threatening to harm me or others"
+            ],
+            State.FALSE_PROFILE : [
+                "Profile is underage",
+                "Profile has misrepresentations",
+                "Profile uses pictures of a different person or is impersonating someone"
+            ],
+            State.SCAM_SPAM : [
+                "Cryptocurrency scam",
+                "Financial solicitation/scam",
+                "Commercial or Promotional Activity",
+                "Spam",
+                "Other"
+            ],
+            State.OFFENSIVE_CONTENT : [
+                "Inappropriate photos or messages",
+                "Violent photos or messages",
+                "Hate speech",
+                "Harassment",
+                "Bullying"
+            ]
+        }
+
     
     async def handle_message(self, message):
         '''
@@ -55,17 +119,92 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
-        
-        if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            # Record message details
+            self.details["Author"] = message.author.name
+            self.details["Content"] = message.content
+            reasons = "\n".join([f"{key}. {value['Reason']}" for key, value in self.type_report_dict.items()])
+            return [
+                "I found this message:",
+                f"```{message.author.name}: {message.content}```",
+                "Your report is private. Please select the reason for the report:",
+                reasons
+            ]
 
-        return []
+                    
+
+        if self.state == State.MESSAGE_IDENTIFIED:
+            m = message.content
+            self.details["Reason"] = self.type_report_dict[m]["Reason"]
+            self.report_type_state = self.type_report_dict[m]["State"]
+            self.state = self.report_type_state
+            prompt = self.type_report_dict[m]["Prompt"]
+            if self.state == State.MORE_INFO_OPTION:
+                # Other selected
+                return [prompt]
+            # Get options
+            options = "\n".join([f"{i + 1}. {option}" for i, option in enumerate(self.prompt_dict[self.state])])
+            return [
+                f"{prompt}: \n{options}"
+            ]
+
+        # Imminent danger selected
+        if self.state == State.IMMINENT_DANGER:
+            return self.prompt_additional_info(message.content)
+
+        # Inauthentic or underage profile selected
+        if self.state == State.FALSE_PROFILE:
+            return self.prompt_additional_info(message.content)
+
+        # Scam or spam
+        if self.state == State.SCAM_SPAM:
+            return self.prompt_additional_info(message.content)
+
+        # Inappropriate or offensive content
+        if self.state == State.OFFENSIVE_CONTENT:
+            return self.prompt_additional_info(message.content)
+            
+
+        if self.state == State.MORE_INFO_OPTION:
+            self.details["Additional_info"] = message.content
+            self.state = State.TO_SEND
+            if self.report_type_state == State.IMMINENT_DANGER:
+                return [
+                    "Thank you for reporting. We take these reports seriously.",
+                    "Our team will review your report and take appropriate action.",
+                    "Please call 911 for all emergencies."
+                ]
+            return [
+                "Thank you for reporting. Our team will review your report and take appropriate action."
+            ]
+
+
+
+    def prompt_additional_info(self, message):
+        # Get corresponding prompt
+        if self.state == State.OFFENSIVE_CONTENT:
+            # Potential for more than one response
+            messages = re.findall(r'\d+', message)
+            self.details["Relevant danger/concern(s)"] = [self.prompt_dict[self.state][int(m) - 1] for m in messages]
+        else:
+            self.details["Relevant danger/concern(s)"] = self.prompt_dict[self.state][int(message)]
+        # Craft response
+        to_return = "Additional information (optional): "
+        if self.state == State.IMMINENT_DANGER:
+            to_return = "If you someone you know is being impersonated, please have them also reach out to us.\n\n" + to_return
+        # Update state
+        self.state = State.MORE_INFO_OPTION
+        return [
+            to_return
+        ]
+
+    def to_send(self):
+        return self.state == State.TO_SEND
+
+    def get_details(self):
+        return self.details
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
-    
 
 
     
