@@ -218,15 +218,11 @@ class Report:
             to_return
         ]
 
-    # def to_send(self):
-    #     return self.state == State.TO_SEND
-
     def to_send(self):
         is_to_send = self.state == State.TO_SEND
         if is_to_send:
-            self.state = State.REPORT_COMPLETE  # Mark as complete
+            self.state = State.REPORT_COMPLETE
         return is_to_send
-
 
     def get_details(self):
         return self.details
