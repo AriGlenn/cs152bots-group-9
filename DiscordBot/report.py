@@ -16,7 +16,6 @@ class State(Enum):
     UNMATCH = auto()
     BLOCK = auto()
 
-    TO_SEND = auto()
     MORE_INFO_OPTION = auto()
 
 class Report:
@@ -179,7 +178,7 @@ class Report:
             elif m == "2":
                 # Do not unmatch user
                 self.details["Requested to be unmatched"] = "No"
-                self.state = State.TO_SEND
+                self.state = State.REPORT_COMPLETE
                 return [
                     "Done"
                 ]
@@ -192,7 +191,7 @@ class Report:
             elif m == "2":
                 # Do not block user
                 self.details["Requested to block"] = "No"
-            self.state = State.TO_SEND
+            self.state = State.REPORT_COMPLETE
             return [
                 "Done"
             ]
@@ -215,12 +214,6 @@ class Report:
         return [
             to_return
         ]
-
-    def to_send(self):
-        is_to_send = self.state == State.TO_SEND
-        if is_to_send:
-            self.state = State.REPORT_COMPLETE
-        return is_to_send
 
     def get_details(self):
         return self.details

@@ -7,6 +7,7 @@ import logging
 import re
 import requests
 from report import Report
+# from report_mod import Report_Mod
 import pdb
 
 # Set up logging to the console
@@ -91,21 +92,26 @@ class ModBot(discord.Client):
         if author_id not in self.reports:
             self.reports[author_id] = Report(self)
 
+
         # Let the report class handle this message; forward all the messages it returns to us
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
             await message.channel.send(r)
 
-        # When ready, send report details to mod channel
-        if self.reports[author_id].to_send():
+        # # If the report is complete or cancelled, remove it from our map
+        if self.reports[author_id].report_complete():
+            # Get report details
             report_details = self.reports[author_id].get_details()
+            # Remove
+            self.reports.pop(author_id)
             # Formart report details
             report_details_formatted = "\n".join([f"{i}:   *{j}*" for i, j in report_details.items()])
+            # Send report to mod channel
             await self.mod_channel.send(f"🚨__**Reported Message:**__🚨\n{report_details_formatted}")
 
-        # If the report is complete or cancelled, remove it from our map
-        if self.reports[author_id].report_complete():
-            self.reports.pop(author_id)
+
+
+
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
