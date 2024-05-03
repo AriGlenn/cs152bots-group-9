@@ -124,7 +124,7 @@ class Report:
             self.state = State.MESSAGE_IDENTIFIED
             # Record message details
             self.details["Author"] = message.author.name
-            self.details["Content"] = message.content
+            self.details["Message Content"] = message.content
             reasons = "\n".join([f"{key}. {value['Reason']}" for key, value in self.type_report_dict.items()])
             return [
                 "I found this message:",
@@ -133,11 +133,9 @@ class Report:
                 reasons
             ]
 
-                    
-
         if self.state == State.MESSAGE_IDENTIFIED:
             m = message.content
-            self.details["Reason"] = self.type_report_dict[m]["Reason"]
+            self.details["Reported Reason"] = self.type_report_dict[m]["Reason"]
             self.report_type_state = self.type_report_dict[m]["State"]
             self.state = self.report_type_state
             prompt = self.type_report_dict[m]["Prompt"]
@@ -155,7 +153,7 @@ class Report:
             return self.prompt_additional_info(message.content)
 
         if self.state == State.MORE_INFO_OPTION:
-            self.details["Additional_info"] = message.content
+            self.details["Additional Information"] = message.content
             self.state = State.UNMATCH
             to_return = "Thank you for reporting. Our team will review your report and take appropriate action."
             if self.report_type_state == State.IMMINENT_DANGER:
@@ -171,7 +169,7 @@ class Report:
             m = message.content
             if m == "1":
                 # Unmatch user
-                self.details["Unmatch"] = "Yes"
+                self.details["Requested to be unmatched"] = "Yes"
                 self.state = State.BLOCK
                 return [
                     "Would you like to block this user?",
@@ -180,7 +178,7 @@ class Report:
                 ]
             elif m == "2":
                 # Do not unmatch user
-                self.details["Unmatch"] = "No"
+                self.details["Requested to be unmatched"] = "No"
                 self.state = State.TO_SEND
                 return [
                     "Done"
@@ -190,10 +188,10 @@ class Report:
             m = message.content
             if m == "1":
                 # Block user
-                self.details["Block"] = "Yes"
+                self.details["Requested to block"] = "Yes"
             elif m == "2":
                 # Do not block user
-                self.details["Block"] = "No"
+                self.details["Requested to block"] = "No"
             self.state = State.TO_SEND
             return [
                 "Done"

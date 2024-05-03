@@ -99,7 +99,9 @@ class ModBot(discord.Client):
         # When ready, send report details to mod channel
         if self.reports[author_id].to_send():
             report_details = self.reports[author_id].get_details()
-            await self.mod_channel.send(report_details)
+            # Formart report details
+            report_details_formatted = "\n".join([f"{i}:   *{j}*" for i, j in report_details.items()])
+            await self.mod_channel.send(f"🚨__**Reported Message:**__🚨\n{report_details_formatted}")
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
@@ -135,5 +137,12 @@ class ModBot(discord.Client):
         return "Evaluated: '" + text+ "'"
 
 
+    def forward_user_report(self, report):
+        '''
+        This function is called by the Report class when it has collected all the necessary information and is ready to send it to the mod channel. 
+        '''
+        pass
+
+        
 client = ModBot()
 client.run(discord_token)
