@@ -13,6 +13,9 @@ class State(Enum):
     SCAM_SPAM = auto()
     OFFENSIVE_CONTENT = auto()
 
+    UNMATCH = auto()
+    BLOCK = auto()
+
     TO_SEND = auto()
     MORE_INFO_OPTION = auto()
 
@@ -153,17 +156,48 @@ class Report:
 
         if self.state == State.MORE_INFO_OPTION:
             self.details["Additional_info"] = message.content
-            self.state = State.TO_SEND
+            self.state = State.UNMATCH
+            to_return = "Thank you for reporting. Our team will review your report and take appropriate action."
             if self.report_type_state == State.IMMINENT_DANGER:
-                return [
-                    "Thank you for reporting. We take these reports seriously.",
-                    "Our team will review your report and take appropriate action.",
-                    "Please call 911 for all emergencies."
-                ]
+                to_return = "Thank you for reporting. We take these reports seriously. Our team will review your report and take appropriate action. Please call 911 for all emergencies."
             return [
-                "Thank you for reporting. Our team will review your report and take appropriate action."
+                to_return,
+                "\n\nWould you like to unmatch this user?",
+                "1. Yes",
+                "2. No"
             ]
 
+        if self.state == State.UNMATCH:
+            m = message.content
+            if m == "1":
+                # Unmatch user
+                self.details["Unmatch"] = "Yes"
+                self.state = State.BLOCK
+                return [
+                    "Would you like to block this user?",
+                    "1. Yes",
+                    "2. No"
+                ]
+            elif m == "2":
+                # Do not unmatch user
+                self.details["Unmatch"] = "No"
+                self.state = State.TO_SEND
+                return [
+                    "Done"
+                ]
+
+        if self.state == State.BLOCK:
+            m = message.content
+            if m == "1":
+                # Block user
+                self.details["Block"] = "Yes"
+            elif m == "2":
+                # Do not block user
+                self.details["Block"] = "No"
+            self.state = State.TO_SEND
+            return [
+                "Done"
+            ]
 
 
     def prompt_additional_info(self, message):
