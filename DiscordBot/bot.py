@@ -7,7 +7,7 @@ import logging
 import re
 import requests
 from report import Report
-# from report_mod import Report_Mod
+from report_mod import Report_Mod
 import pdb
 
 # Set up logging to the console
@@ -26,7 +26,6 @@ with open(token_path) as f:
     tokens = json.load(f)
     discord_token = tokens['discord']
 
-
 class ModBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
@@ -35,7 +34,14 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.mod_reports = {} # Map from mod IDs to the state of their report
+        self.saved_report_history = {} # Map from user IDs to their saved report history
         self.mod_channel = None
+        # Check if reports data file exists
+        if os.path.isfile("saved_report_history.json"):
+            with open("saved_report_history.json", "r") as json_file:
+                self.saved_report_history = json.load(json_file)
+
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -69,7 +75,11 @@ class ModBot(discord.Client):
 
         # Check if this message was sent in a server ("guild") or if it's a DM
         if message.guild:
-            await self.handle_channel_message(message)
+            # Forward mod messages to mod channel
+            if message.channel.name == f'group-{self.group_num}-mod':
+                await self.handle_mod_channel_message_reply(message)
+            else:
+                await self.handle_channel_message(message)
         else:
             await self.handle_dm(message)
 
@@ -92,14 +102,13 @@ class ModBot(discord.Client):
         if author_id not in self.reports:
             self.reports[author_id] = Report(self)
 
-
         # Let the report class handle this message; forward all the messages it returns to us
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
             await message.channel.send(r)
 
-        # # If the report is complete or cancelled, remove it from our map
-        if self.reports[author_id].report_complete():
+        # If the report is complete or cancelled, remove it from our map
+        if author_id in self.reports and self.reports[author_id].report_complete():
             # Get report details
             report_details = self.reports[author_id].get_details()
             # Remove
@@ -108,6 +117,42 @@ class ModBot(discord.Client):
             report_details_formatted = "\n".join([f"{i}:   *{j}*" for i, j in report_details.items()])
             # Send report to mod channel
             await self.mod_channel.send(f"🚨__**Reported Message:**__🚨\n{report_details_formatted}")
+
+            # Save report to JSON file
+            # Check if individual has a saved report history (they have been reported before)
+            reported_user = report_details["Author"]
+            if reported_user not in self.saved_report_history:
+                self.saved_report_history[reported_user] = []
+            # Append report to user's report history
+            self.saved_report_history[reported_user].append(report_details)
+            # Save report to JSON file
+            with open("saved_report_history.json", "w") as json_file:
+                json.dump(self.saved_report_history, json_file, indent=4)
+
+
+            # Initiate moderator evaluation
+
+
+    # async def handle_mod_channel_message_reply(self, message):
+    #     # Ensure message is replying to a message
+    #     if not message.reference:
+    #         return
+
+    #     # Get original message that is being replied to
+    #     original_message = await message.channel.fetch_message(message.reference.message_id)
+
+    #     # Print the original message and the reply
+    #     print(f"Original Message: {original_message.content}")
+    #     print(f"Reply Message: {message.content}")
+
+    #     # Handle messages
+    #     # Handle a help message
+    #     if message.content == Report_Mod.HELP_KEYWORD:
+    #         reply =  "Use the `report` command to begin the reporting process.\n"
+    #         reply += "Use the `cancel` command to cancel the report process.\n"
+    #         await message.reply(reply)
+    #         return
+
 
 
 
