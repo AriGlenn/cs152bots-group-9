@@ -36,7 +36,7 @@ class Report:
                 "Prompt": "Please select the relevant danger: "
             },
             "2": {
-                "Reason": "False profile",
+                "Reason": "Inauthentic or underage profile",
                 "State": State.FALSE_PROFILE,
                 "Prompt": "Please select the type of concern: "
             },
@@ -59,7 +59,7 @@ class Report:
         # Dictionary (state, number --> Text)
         self.prompt_dict = {
             State.IMMINENT_DANGER : [
-                "Person is threatening self harm or suicide",
+                "Person is threatening self-harm or suicide",
                 "Person is threatening to harm me or others"
             ],
             State.FALSE_PROFILE : [
@@ -175,6 +175,7 @@ class Report:
                 self.details["Requested to be unmatched"] = "Yes"
                 self.state = State.BLOCK
                 return [
+                    "User has been unmatched.\n",
                     "Would you like to block this user?",
                     "1. Yes",
                     "2. No"
@@ -184,20 +185,23 @@ class Report:
                 self.details["Requested to be unmatched"] = "No"
                 self.state = State.REPORT_COMPLETE
                 return [
-                    "Done"
+                    "User has not been unmatched. Your report is finished."
                 ]
 
         if self.state == State.BLOCK:
             m = message.content
+            self.state = State.REPORT_COMPLETE
+            reply = "Your report is finished."
             if m == "1":
                 # Block user
                 self.details["Requested to block"] = "Yes"
+                reply = "User has been blocked.\n" + reply
             elif m == "2":
                 # Do not block user
                 self.details["Requested to block"] = "No"
-            self.state = State.REPORT_COMPLETE
+                reply = "User has not been blocked.\n" + reply
             return [
-                "Done"
+                reply
             ]
 
 
@@ -210,7 +214,7 @@ class Report:
         else:
             self.details["Relevant danger/concern(s)"] = self.prompt_dict[self.state][int(message) - 1]
         # Craft response
-        to_return = "Additional information (optional): "
+        to_return = "Additional information (optional, type \"No\" if none): "
         if self.state == State.IMMINENT_DANGER:
             to_return = "If you someone you know is being impersonated, please have them also reach out to us.\n\n" + to_return
         # Update state
