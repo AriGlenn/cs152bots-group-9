@@ -120,7 +120,7 @@ class ModBot(discord.Client):
 
             # Save report to JSON file
             # Check if individual has a saved report history (they have been reported before)
-            reported_user = report_details["Author"]
+            reported_user = report_details["Reported user"]
             if reported_user not in self.saved_report_history:
                 self.saved_report_history[reported_user] = []
             # Append report to user's report history
@@ -130,7 +130,7 @@ class ModBot(discord.Client):
                 json.dump(self.saved_report_history, json_file, indent=4)
 
 
-            # Initiate moderator evaluation
+    # Initiate moderator evaluation
 
 
     # async def handle_mod_channel_message_reply(self, message):

@@ -115,19 +115,20 @@ class Report:
             if not channel:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
-                message = await channel.fetch_message(int(m.group(3)))
+                reported_message = await channel.fetch_message(int(m.group(3)))
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
             # Record message details
-            self.details["Author"] = message.author.name
-            self.details["Message Content"] = message.content
+            self.details["Reported user"] = reported_message.author.name
+            self.details["Reported by"] = message.author.name
+            self.details["Message Content"] = reported_message.content
             reasons = "\n".join([f"{key}. {value['Reason']}" for key, value in self.type_report_dict.items()])
             return [
                 "I found this message:",
-                f"```{message.author.name}: {message.content}```",
+                f"```{reported_message.author.name}: {reported_message.content}```",
                 "Your report is private. Please select the reason for the report:",
                 reasons
             ]
