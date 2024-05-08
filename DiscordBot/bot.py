@@ -179,6 +179,21 @@ class ModBot(discord.Client):
 
             # NEED TO HANDLE WHEN FINISHED EVALUATION PROCESS
 
+            # If the report is complete or cancelled, remove it from our map
+            if author_id in self.mod_reports and self.mod_reports[author_id].report_complete():
+                # Close report
+                report_id = self.mod_reports[author_id].get_id()
+                with open("saved_report_history.json", "r") as json_file:
+                    json_data = json.load(json_file)
+                for user, reports in (json_data["user_reports"] ).items():
+                    for report in reports:
+                        if report["ID"] == report_id:
+                            report["Status"] = "Closed"
+                with open("saved_report_history.json", "w") as json_file:
+                    json.dump(json_data, json_file)
+
+                # Remove
+                self.mod_reports.pop(author_id)
 
 
 
