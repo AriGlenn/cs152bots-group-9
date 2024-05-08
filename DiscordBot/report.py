@@ -122,6 +122,7 @@ class Report:
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
             # Record message details
+            self.details["Reported user ID"] = reported_message.author.id
             self.details["Reported user"] = reported_message.author.name
             self.details["Reported by"] = message.author.name
             self.details["Status"] = "Open"

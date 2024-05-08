@@ -136,7 +136,8 @@ class Report_Mod:
             if self.state in (State.BAN, State.SUSPEND, State.REMOVE_CONTENT, State.WARN):
                 reported_user = self.current_report["Reported user"]
 
-                # SEND MESSAGE TO USER: [self.actions[m]["Message"].format(report["Reported user"])]
+                # SEND MESSAGE TO USER: 
+                await self.notify_reported_user(self.current_report["Reported user ID"], self.actions[m]["Message"].format(reported_user))
 
                 # Get number of reports on user
                 with open("saved_report_history.json", "r") as file:
@@ -193,12 +194,14 @@ class Report_Mod:
                 # Suspend user
                 
                 # SEND MESSAGE TO USER: "You have been suspended for repeated false reporting."
+                await self.notify_reported_user(self.current_report["Reported user ID"], "You have been suspended for repeated false reporting.")
                 self.state = State.REPORT_COMPLETE
                 return ["User has been suspended for repeated false reporting."]
             else:
                 # Warn user
 
                 # SEND MESSAGE TO USER: "Ensure future reports are accurate to avoid action on your account."
+                await self.notify_reported_user(self.current_report["Reported user ID"], "Ensure future reports are accurate to avoid action on your account.")
                 self.state = State.REPORT_COMPLETE
                 return ["User has been warned for false reporting"]
 
@@ -222,6 +225,7 @@ class Report_Mod:
             m = message.content
             action = "suspended" if m == "1" else "banned"
             # SEND MESSAGE TO USER: f"Your account has been {action} as a result of {} content violations."
+            await self.notify_reported_user(self.current_report["Reported user ID"], f"Your account has been {action} as a result of {'__'} content violations.")
             self.state = State.REPORT_COMPLETE
             return [f"User has been {action}"]
 
@@ -236,4 +240,11 @@ class Report_Mod:
 
 
     
+    async def notify_reported_user(self, user_id, message):
+        user = await self.client.fetch_user(user_id)
+        if user:
+            await user.send(message)
+        else:
+            print(f"Failed to find user with ID {user_id}")
+
 
