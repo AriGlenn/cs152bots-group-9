@@ -100,15 +100,12 @@ class Report_Mod:
                 "2. Set status for unprioritized report"
             ]
 
-
         if self.state == State.SET_INTENT:
             m = message.content
             if m == "1":
                 self.state = State.EVAL
             elif m == "2":
                 self.state = State.PRIORITY
-
-
 
         if self.state == State.PRIORITY:
             # Check if there are any unpriotized reports

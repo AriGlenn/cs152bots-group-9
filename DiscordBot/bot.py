@@ -178,40 +178,9 @@ class ModBot(discord.Client):
         if author_id in self.mod_reports and self.mod_reports[author_id].report_complete():
             # Close report
             self.mod_reports[author_id].close_report()
-            # report_id = self.mod_reports[author_id].get_id()
-
-            # if report_id:
-            #     with open("saved_report_history.json", "r") as json_file:
-            #         json_data = json.load(json_file)
-            #     for user, reports in (json_data["user_reports"] ).items():
-            #         for report in reports:
-            #             if report["ID"] == report_id:
-            #                 report["Status"] = "Closed"
-            #     with open("saved_report_history.json", "w") as json_file:
-            #         json.dump(json_data, json_file)
 
             # Remove
             self.mod_reports.pop(author_id)
-
-
-        # # If replying to a message, need to evluate priority
-        # else:
-        #     # Get original message that is being replied to
-        #     original_message = await message.channel.fetch_message(message.reference.message_id)
-
-        #     # Print the original message and the reply
-        #     print(f"Original Message: {original_message.content}")
-        #     print(f"Reply Message: {message.content}")
-
-        #     # Ask moderator questions about message
-
-        #     # Handle messages
-        #     # Handle a help message
-        #     if message.content == Report_Mod.HELP_KEYWORD:
-        #         reply =  "Use the `report` command to begin the reporting process.\n"
-        #         reply += "Use the `cancel` command to cancel the report process.\n"
-        #         await message.reply(reply)
-        #         return
 
 
     async def handle_channel_message(self, message):

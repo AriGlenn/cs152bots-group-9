@@ -28,6 +28,7 @@ class Report:
         self.client = client
         self.message = None
         self.details = {}
+        self.reported_message = None
         self.report_type_state = None
         self.type_report_dict = {
             "1": {
@@ -128,16 +129,18 @@ class Report:
             self.details["Status"] = "Open"
             self.details["Priority"] = "NULL"
             self.details["Message Content"] = reported_message.content
-            reasons = "\n".join([f"{key}. {value['Reason']}" for key, value in self.type_report_dict.items()])
-            return [
-                "I found this message:",
-                f"```{reported_message.author.name}: {reported_message.content}```",
-                "Your report is private. Please select the reason for the report:",
-                reasons
-            ]
+            self.reported_message = reported_message
+            return self.print_reason_options()
+
 
         if self.state == State.MESSAGE_IDENTIFIED:
-            m = message.content
+            m = message.content.strip()
+            if m not in self.type_report_dict:
+                return [
+                    "Invalid selection. Going back a step...",
+                    "Say `cancel` to cancel",
+                    *self.print_reason_options()
+                ]
             self.details["Reported Reason"] = self.type_report_dict[m]["Reason"]
             self.report_type_state = self.type_report_dict[m]["State"]
             self.state = self.report_type_state
@@ -147,9 +150,7 @@ class Report:
                 return [prompt]
             # Get options
             options = "\n".join([f"{i + 1}. {option}" for i, option in enumerate(self.prompt_dict[self.state])])
-            return [
-                f"{prompt}: \n{options}"
-            ]
+            return [f"{prompt}: \n{options}"]
 
         # Prompt additional info
         if self.state in (State.IMMINENT_DANGER, State.FALSE_PROFILE, State.SCAM_SPAM, State.OFFENSIVE_CONTENT):
@@ -169,7 +170,7 @@ class Report:
             ]
 
         if self.state == State.UNMATCH:
-            m = message.content
+            m = message.content.strip()
             if m == "1":
                 # Unmatch user
                 self.details["Requested to be unmatched"] = "Yes"
@@ -187,31 +188,72 @@ class Report:
                 return [
                     "User has not been unmatched. Your report is finished."
                 ]
+            else:
+                return [
+                    "Invalid selection. Going back a step...",
+                    "Say `cancel` to cancel\n",
+                    "Would you like to unmatch this user?",
+                    "1. Yes",
+                    "2. No"
+                ]
 
         if self.state == State.BLOCK:
-            m = message.content
+            m = message.content.strip()
             self.state = State.REPORT_COMPLETE
-            reply = "Your report is finished."
             if m == "1":
                 # Block user
                 self.details["Requested to block"] = "Yes"
-                reply = "User has been blocked.\n" + reply
+                return [
+                    "User has been blocked.\n",
+                    "Your report is finished."
+                ]
             elif m == "2":
                 # Do not block user
                 self.details["Requested to block"] = "No"
-                reply = "User has not been blocked.\n" + reply
-            return [
-                reply
-            ]
+                return [
+                    "User has not been blocked.\n",
+                    "Your report is finished."
+                ]
+            else:
+                return [
+                    "Invalid selection. Going back a step...",
+                    "Say `cancel` to cancel\n",
+                    "Would you like to block this user?",
+                    "1. Yes",
+                    "2. No"
+                ]
 
+
+    def resend_message(self):
+        prompt = None
+        for key, details in self.type_report_dict.items():
+            if details["State"] == self.state:
+                prompt = details["Prompt"]
+        options = "\n".join([f"{i + 1}. {option}" for i, option in enumerate(self.prompt_dict[self.state])])
+        return [
+            "One or more invalid selection(s). Going back a step...",
+            "Say `cancel` to cancel",
+            f"{prompt}: \n{options}"
+        ]
 
     def prompt_additional_info(self, message):
+        message = message.strip()
         # Get corresponding prompt
         if self.state == State.OFFENSIVE_CONTENT:
             # Potential for more than one response
             messages = re.findall(r'\d+', message)
-            self.details["Relevant danger/concern(s)"] = [self.prompt_dict[self.state][int(m) - 1] for m in messages]
+            if len(messages) == 0:
+                return [*self.resend_message()]
+            relevant_dangers = []
+            for m in messages:
+                if int(m) not in range(1, len(self.prompt_dict[self.state]) + 1):
+                    return [*self.resend_message()]
+                else:
+                    relevant_dangers.append(self.prompt_dict[self.state][int(m) - 1])
+            self.details["Relevant danger/concern(s)"] = relevant_dangers
         else:
+            if (len(re.findall(r'\d+', message)) == 0) or (int(message) not in range(1, len(self.prompt_dict[self.state]) + 1)):
+                return [*self.resend_message()]
             self.details["Relevant danger/concern(s)"] = self.prompt_dict[self.state][int(message) - 1]
         # Craft response
         to_return = "Additional information (optional, type \"No\" if none): "
@@ -219,8 +261,15 @@ class Report:
             to_return = "If you someone you know is being impersonated, please have them also reach out to us.\n\n" + to_return
         # Update state
         self.state = State.MORE_INFO_OPTION
+        return [to_return]
+
+    def print_reason_options(self):
+        reasons = "\n".join([f"{key}. {value['Reason']}" for key, value in self.type_report_dict.items()])
         return [
-            to_return
+            "I found this message:",
+            f"```{self.reported_message.author.name}: {self.reported_message.content}```",
+            "Your report is private. Please select the reason for the report:",
+            reasons
         ]
 
     def get_details(self):
@@ -228,7 +277,3 @@ class Report:
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
-
-
-    
-
