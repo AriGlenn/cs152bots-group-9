@@ -36,11 +36,23 @@ class ModBot(discord.Client):
         self.reports = {} # Map from user IDs to the state of their report
         self.mod_reports = {} # Map from mod IDs to the state of their report
         self.saved_report_history = {} # Map from user IDs to their saved report history
+        self.counter = 0 # Counter for reports to have unique IDs
         self.mod_channel = None
         # Check if reports data file exists
         if os.path.isfile("saved_report_history.json"):
             with open("saved_report_history.json", "r") as json_file:
-                self.saved_report_history = json.load(json_file)
+                json_data = json.load(json_file)
+                self.counter = json_data["counter"]
+                self.saved_report_history = json_data["user_reports"]
+        else:
+            initial_data = {
+                "counter": 0,
+                "user_reports": {}
+            }
+            with open("saved_report_history.json", "w") as json_file:
+                json.dump(initial_data, json_file)
+            self.counter = initial_data["counter"]
+            self.saved_report_history = initial_data["user_reports"]   
 
 
     async def on_ready(self):
@@ -113,6 +125,9 @@ class ModBot(discord.Client):
             report_details = self.reports[author_id].get_details()
             # Remove
             self.reports.pop(author_id)
+            # Add unqiue ID
+            report_details["ID"] = self.counter
+            self.counter += 1
             # Formart report details
             report_details_formatted = "\n".join([f"{i}:   *{j}*" for i, j in report_details.items()])
             # Send report to mod channel
@@ -125,35 +140,81 @@ class ModBot(discord.Client):
                 self.saved_report_history[reported_user] = []
             # Append report to user's report history
             self.saved_report_history[reported_user].append(report_details)
-            # Save report to JSON file
+            # Save data to JSON file
+            data_to_save = {
+                "counter": self.counter,
+                "user_reports": self.saved_report_history
+            }
             with open("saved_report_history.json", "w") as json_file:
-                json.dump(self.saved_report_history, json_file, indent=4)
+                json.dump(data_to_save, json_file, indent=4)
 
 
-    # Initiate moderator evaluation
+    async def handle_mod_channel_message_reply(self, message):
+        if not message.reference:
+            # See if 
+            if message.content == Report_Mod.HELP_KEYWORD:
+                reply =  "Use the `eval` command to begin evaluating a message.\n"
+                reply += "Use the `cancel` command to cancel the evaluation process.\n"
+                await message.reply(reply)
+                return
 
 
-    # async def handle_mod_channel_message_reply(self, message):
-    #     # Ensure message is replying to a message
-    #     if not message.reference:
-    #         return
+            author_id = message.author.id
+            responses = []
 
-    #     # Get original message that is being replied to
-    #     original_message = await message.channel.fetch_message(message.reference.message_id)
+            # Only respond to messages if they're part of a reporting flow
+            if author_id not in self.mod_reports and not message.content.startswith(Report_Mod.START_KEYWORD):
+                return
 
-    #     # Print the original message and the reply
-    #     print(f"Original Message: {original_message.content}")
-    #     print(f"Reply Message: {message.content}")
+            # If we don't currently have an active report for this user, add one
+            if author_id not in self.mod_reports:
+                self.mod_reports[author_id] = Report_Mod(self)
 
-    #     # Handle messages
-    #     # Handle a help message
-    #     if message.content == Report_Mod.HELP_KEYWORD:
-    #         reply =  "Use the `report` command to begin the reporting process.\n"
-    #         reply += "Use the `cancel` command to cancel the report process.\n"
-    #         await message.reply(reply)
-    #         return
+            # Let the report class handle this message; forward all the messages it returns to us
+            responses = await self.mod_reports[author_id].handle_message(message)
+            for r in responses:
+                await message.channel.send(r)
 
 
+
+            # NEED TO HANDLE WHEN FINISHED EVALUATION PROCESS
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        # If replying to a message, need to evluate priority
+        else:
+            # Get original message that is being replied to
+            original_message = await message.channel.fetch_message(message.reference.message_id)
+
+            # Print the original message and the reply
+            print(f"Original Message: {original_message.content}")
+            print(f"Reply Message: {message.content}")
+
+            # Ask moderator questions about message
+
+
+            # Handle messages
+            # Handle a help message
+            if message.content == Report_Mod.HELP_KEYWORD:
+                reply =  "Use the `report` command to begin the reporting process.\n"
+                reply += "Use the `cancel` command to cancel the report process.\n"
+                await message.reply(reply)
+                return
 
 
 

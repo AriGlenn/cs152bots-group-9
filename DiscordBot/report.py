@@ -124,6 +124,8 @@ class Report:
             # Record message details
             self.details["Reported user"] = reported_message.author.name
             self.details["Reported by"] = message.author.name
+            self.details["Status"] = "Open"
+            self.details["Priority"] = "NULL"
             self.details["Message Content"] = reported_message.content
             reasons = "\n".join([f"{key}. {value['Reason']}" for key, value in self.type_report_dict.items()])
             return [
