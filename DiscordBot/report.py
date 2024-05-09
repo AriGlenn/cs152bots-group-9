@@ -129,6 +129,8 @@ class Report:
             self.details["Status"] = "Open"
             self.details["Priority"] = "NULL"
             self.details["Message Content"] = reported_message.content
+            self.details["Message ID"] = reported_message.id
+            self.details["Channel ID"] = reported_message.channel.id
             self.reported_message = reported_message
             return self.print_reason_options()
 

@@ -308,9 +308,7 @@ class Report_Mod:
                 reason = self.current_report["Reported Reason"]
 
                 # SEND MESSAGE TO USER:
-                print("SENDING MESSAGE")
                 await self.notify_reported_user(self.current_report["Reported user ID"], self.actions[m]["Message"].format(reason))
-                print("MESSAGE SENT")
 
                 # Get number of reports on user
                 json_data = self.get_report_history_data()
@@ -318,6 +316,11 @@ class Report_Mod:
                     return ["No open reports found."]
 
                 reports = json_data["user_reports"][reported_user]
+
+
+                if self.state == State.REMOVE_CONTENT:
+                    # NEED TO REMOVE THE MESSAGE
+                    await self.delete_message(self.current_report["Channel ID"], self.current_report["Message ID"])
 
                 if len(reports) >= 3:
                     self.state = State.BAN_OR_SUSPEND
@@ -375,6 +378,7 @@ class Report_Mod:
                 
                 # SEND MESSAGE TO USER: "You have been suspended for repeated false reporting."
                 await self.notify_reported_user(self.current_report["Reported user ID"], "You have been suspended for repeated false reporting.")
+                self.remove_report()
                 self.state = State.REPORT_COMPLETE
                 return [
                     "User has been suspended for repeated false reporting.",
@@ -385,6 +389,7 @@ class Report_Mod:
 
                 # SEND MESSAGE TO USER: "Ensure future reports are accurate to avoid action on your account."
                 await self.notify_reported_user(self.current_report["Reported user ID"], "Ensure future reports are accurate to avoid action on your account.")
+                self.remove_report()
                 self.state = State.REPORT_COMPLETE
                 return [
                     "User has been warned for false reporting.",
@@ -467,14 +472,6 @@ class Report_Mod:
             json.dump(json_data, json_file, indent=4)
 
 
-    async def notify_reported_user(self, user_id, message):
-        user = await self.client.fetch_user(user_id)
-        if user:
-            await user.send(message)
-        else:
-            print(f"Failed to find user with ID {user_id}")
-
-
     def print_message(self, on_error=False):
         reply = ""
         if on_error:
@@ -485,3 +482,53 @@ class Report_Mod:
             reply += "1. Evaluate a report\n"
             reply += "2. Set status for unprioritized report\n"
             return [reply]
+
+
+    def remove_report(self):
+        # Remove report from JSON file (saved_report_history)
+        with open("saved_report_history.json", "r") as json_file:
+            json_data = json.load(json_file)
+        report_found = False
+        for user, reports in list(json_data["user_reports"].items()):
+            for report in reports:
+                if report["ID"] == self.current_report["ID"]:
+                    json_data["user_reports"][user].remove(report)
+                    report_found = True
+                    break
+            # Remove user entry if no more reports left
+            if not json_data["user_reports"][user]:
+                del json_data["user_reports"][user]
+            if report_found:
+                break
+        print(json_data)
+        with open("saved_report_history.json", "w") as json_file:
+            json.dump(json_data, json_file, indent=4)
+        self.current_report = None
+
+
+    async def notify_reported_user(self, user_id, message):
+        user = await self.client.fetch_user(user_id)
+        if user:
+            await user.send(message)
+        else:
+            print(f"Failed to find user with ID {user_id}")
+
+
+    async def delete_message(self, channel_id, message_id):
+        channel = self.client.get_channel(channel_id)
+        if not channel:
+            print(f"Failed to find channel with ID {channel_id}")
+            return False
+        try:
+            message = await channel.fetch_message(message_id)
+            await message.delete()
+            return True
+        except discord.NotFound:
+            print("Message not found.")
+        except discord.Forbidden:
+            print("Do not have permission to delete the message.")
+        except discord.HTTPException as e:
+            print(f"Failed to delete message: {str(e)}")
+        return False
+
+
