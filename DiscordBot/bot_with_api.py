@@ -13,7 +13,8 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, ChatSession
 
 # Set up Vertex API
-project_id = "cs152-bot-424101"
+# project_id = "cs152-bot-424101" # Gabbys project ID
+project_id = "cs152-424619" # Giancarlos project ID 
 vertexai.init(project=project_id, location="us-central1")
 model = GenerativeModel(model_name="gemini-1.0-pro-002")
 chat = model.start_chat()
@@ -202,7 +203,9 @@ class ModBot(discord.Client):
         # Create computer report and forward to mod channel if concerning
         report_details = {}
         scores = self.eval_text(message.content)
-        if scores != "not concerning content":
+        
+        
+        if scores.strip() != "not concerning content":
             report_details["Reported user ID"] = message.author.id
             report_details["Reported user"] = message.author.name
             report_details["Reported by"] = "Auto report"
