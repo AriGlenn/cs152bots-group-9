@@ -1,0 +1,27 @@
+string,label,predicted_label
+Let's continue this conversation on WhatsApp.,trying to move someone onto a different platform,trying to move someone onto a different platform
+how are you?,not concerning content,not concerning content
+Help!,imminent danger,inappropriate or offensive content
+Click this link to claim your reward.,spam or scam,trying to move someone onto a different platform
+I'm feeling unsafe.,other concerning content,not concerning content
+Emergency!,imminent danger,vertex general error
+nice to meet you,not concerning content,not concerning content
+I'm not who I say I am.,inauthentic or underage profile,"in this case, the message is classified as: 
+
+""inauthentic or underage profile"
+I'm using a fake ID.,inauthentic or underage profile,vertex general error
+hi,not concerning content,not concerning content
+I hate you!,inappropriate or offensive content,inappropriate or offensive content
+Add me on Snapchat for more.,trying to move someone onto a different platform,vertex general error
+good morning,not concerning content,not concerning content
+Congratulations! You've won a prize!,spam or scam,inappropriate or offensive content
+You're ugly!,inappropriate or offensive content,vertex general error
+You're stupid!,inappropriate or offensive content,vertex general error
+I'm 15 years old.,inauthentic or underage profile,vertex general error
+hello,not concerning content,not concerning content
+Free money!,spam or scam,inappropriate or offensive content
+Something doesn't feel right.,other concerning content,inappropriate or offensive content
+Message me on Instagram.,trying to move someone onto a different platform,trying to move someone onto a different platform
+Someone is following me.,imminent danger,inappropriate or offensive content
+I'm in danger!,imminent danger,imminent danger
+I need help.,other concerning content,vertex general error

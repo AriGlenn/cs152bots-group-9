@@ -1,0 +1,85 @@
+{
+    "counter": 6,
+    "user_reports": {
+        "gricci5913": [
+            {
+                "Reported user ID": 755812829357146172,
+                "Reported user": "gricci5913",
+                "Reported by": "Auto report",
+                "Status": "Open",
+                "Priority": "NULL",
+                "Message Content": "im 13",
+                "Message ID": 1244739525113024552,
+                "Channel ID": 1211760624535867409,
+                "Reported Reason": "general",
+                "Relevant danger/concern(s)": "general",
+                "ID": 0
+            },
+            {
+                "Reported user ID": 755812829357146172,
+                "Reported user": "gricci5913",
+                "Reported by": "Auto report",
+                "Status": "Open",
+                "Priority": "NULL",
+                "Message Content": "wanna talk crytpo?",
+                "Message ID": 1244739640217440376,
+                "Channel ID": 1211760624535867409,
+                "Reported Reason": "not concerning content \n",
+                "Relevant danger/concern(s)": "not concerning content \n",
+                "ID": 1
+            },
+            {
+                "Reported user ID": 755812829357146172,
+                "Reported user": "gricci5913",
+                "Reported by": "Auto report",
+                "Status": "Open",
+                "Priority": "NULL",
+                "Message Content": "wana talk crypto?",
+                "Message ID": 1244740447746789537,
+                "Channel ID": 1211760624535867409,
+                "Reported Reason": "inappropriate or offensive content",
+                "Relevant danger/concern(s)": "inappropriate or offensive content",
+                "ID": 2
+            },
+            {
+                "Reported user ID": 755812829357146172,
+                "Reported user": "gricci5913",
+                "Reported by": "Auto report",
+                "Status": "Open",
+                "Priority": "NULL",
+                "Message Content": "im 13",
+                "Message ID": 1244755719807438950,
+                "Channel ID": 1211760624535867409,
+                "Reported Reason": "general",
+                "Relevant danger/concern(s)": "general",
+                "ID": 3
+            },
+            {
+                "Reported user ID": 755812829357146172,
+                "Reported user": "gricci5913",
+                "Reported by": "Auto report",
+                "Status": "Open",
+                "Priority": "NULL",
+                "Message Content": "hi",
+                "Message ID": 1244756031226118285,
+                "Channel ID": 1211760624535867409,
+                "Reported Reason": "Not concerning content",
+                "Relevant danger/concern(s)": "Not concerning content",
+                "ID": 4
+            },
+            {
+                "Reported user ID": 755812829357146172,
+                "Reported user": "gricci5913",
+                "Reported by": "Auto report",
+                "Status": "Open",
+                "Priority": "NULL",
+                "Message Content": "im 13",
+                "Message ID": 1244756543031738481,
+                "Channel ID": 1211760624535867409,
+                "Reported Reason": "general",
+                "Relevant danger/concern(s)": "general",
+                "ID": 5
+            }
+        ]
+    }
+}

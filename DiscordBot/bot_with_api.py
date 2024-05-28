@@ -11,6 +11,8 @@ from report_mod import Report_Mod
 import pdb
 import vertexai
 from vertexai.generative_models import GenerativeModel, ChatSession
+import pandas as pd
+metadata = pd.read_csv("metadata.csv")
 
 # Set up Vertex API
 # project_id = "cs152-bot-424101" # Gabbys project ID
@@ -203,6 +205,11 @@ class ModBot(discord.Client):
         # Create computer report and forward to mod channel if concerning
         report_details = {}
         scores = self.eval_text(message.content)
+        name = message.author.name
+        if name in metadata["name"].values:
+            row = metadata[metadata["name"] == name]
+            probability_scammer = row["probability_scammer"].values[0]
+            print(f"The probability of {name} being a scammer is: {probability_scammer}")
         
         
         if scores.strip() != "not concerning content":
