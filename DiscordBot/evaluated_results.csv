@@ -1,0 +1,25 @@
+string,label,predicted_label
+I'm 15 years old.,inauthentic or underage profile,vertex general error
+I need help.,other concerning content,not concerning content
+Something doesn't feel right.,other concerning content,not concerning content
+hi,not concerning content,not concerning content
+hello,not concerning content,not concerning content
+good morning,not concerning content,not concerning content
+how are you?,not concerning content,not concerning content
+Add me on Snapchat for more.,trying to move someone onto a different platform,vertex general error
+Help!,imminent danger,vertex general error
+I'm not who I say I am.,inauthentic or underage profile,vertex general error
+Someone is following me.,imminent danger,not concerning content
+Click this link to claim your reward.,spam or scam,spam or scam
+You're stupid!,inappropriate or offensive content,inappropriate or offensive content
+Congratulations! You've won a prize!,spam or scam,inappropriate or offensive content
+I'm in danger!,imminent danger,imminent danger
+Let's continue this conversation on WhatsApp.,trying to move someone onto a different platform,vertex general error
+You're ugly!,inappropriate or offensive content,inappropriate or offensive content
+Message me on Instagram.,trying to move someone onto a different platform,trying to move someone onto a different platform
+I'm using a fake ID.,inauthentic or underage profile,vertex general error
+Free money!,spam or scam,spam or scam
+Emergency!,imminent danger,other concerning content
+I'm feeling unsafe.,other concerning content,inappropriate or offensive content
+nice to meet you,not concerning content,not concerning content
+I hate you!,inappropriate or offensive content,inappropriate or offensive content

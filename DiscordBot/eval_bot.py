@@ -4,6 +4,8 @@ from vertexai.generative_models import GenerativeModel
 import string
 import random
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from datasets import load_dataset
+import re
 
 # Initialize Vertex AI
 project_id = "cs152-424619"  # Giancarlo's project ID
@@ -85,11 +87,17 @@ def make_csv(csv_file_path):
         "not concerning content": ["hi", "hello", "how are you?", "good morning", "nice to meet you"],
         "imminent danger": ["Help!", "I'm in danger!", "Emergency!", "Someone is following me."],
         "inauthentic or underage profile": ["I'm 15 years old.", "I'm not who I say I am.", "I'm using a fake ID."],
-        "spam or scam": ["Congratulations! You've won a prize!", "Click this link to claim your reward.", "Free money!"],
-        "inappropriate or offensive content": ["I hate you!", "You're ugly!", "You're stupid!"],
+        #"spam or scam": ["Congratulations! You've won a prize!", "Click this link to claim your reward.", "Free money!"],
+        #"inappropriate or offensive content": ["I hate you!", "You're ugly!", "You're stupid!"],
         "trying to move someone onto a different platform": ["Let's continue this conversation on WhatsApp.", "Add me on Snapchat for more.", "Message me on Instagram."],
         "other concerning content": ["I need help.", "Something doesn't feel right.", "I'm feeling unsafe."]
     }
+    
+    spam_df = pd.read_csv("spam_only.csv")
+    categories["spam or scam"] = spam_df["message"].tolist()
+    
+    toxic = pd.read_csv("toxic.csv")
+    categories["inappropriate or offensive content"] = toxic["message"].tolist()
 
     data = []
     for category, phrases in categories.items():
@@ -103,11 +111,45 @@ def make_csv(csv_file_path):
 
 
 def main():
-    csv_file_path = 'DiscordBot/eval_bot.csv'
+    csv_file_path = 'eval_bot.csv'
     make_csv(csv_file_path)
-    evaluated_results_df = evaluate_strings_from_csv(csv_file_path)
-    analyze_results(evaluated_results_df)
+    #evaluated_results_df = evaluate_strings_from_csv(csv_file_path)
+    #analyze_results(evaluated_results_df)
+
+def process_spam():
+    # https://www.kaggle.com/datasets/uciml/sms-spam-collection-dataset?select=spam.csv
+    df = pd.read_csv('spam.csv', encoding='latin1', error_bad_lines=False)
+    df = df.dropna(axis=1, how='all')
+    spam_df = df[df['label'] == 'spam']
+    spam_df['label'] = spam_df['label'].replace('spam', 'spam or scam')
+    spam_df.to_csv('spam_only.csv', index=False, columns=['label', 'message'])
+
+def process_toxic():
+    # https://huggingface.co/datasets/lmsys/toxic-chat/viewer/toxicchat0124/train?p=27&f[human_annotation][value]=%27True%27
+    dataset = load_dataset("lmsys/toxic-chat", "toxicchat0124")
+    df = pd.DataFrame(dataset['train'])
+
+    def preprocess_text(text):
+        text = re.sub(r'[{}]'.format(string.punctuation), '', text)  
+        text = text.strip() 
+        return text
+
+    def count_words(text):
+        words = re.findall(r'\w+', text)
+        return len(words)
+
+    df['user_input'] = df['user_input'].apply(preprocess_text)
+
+    df_toxic_filtered = df[(df['toxicity'] == 1) & 
+                        df['user_input'].notnull() &
+                        (df['user_input'].apply(lambda x: count_words(x)) < 50)]
+
+    df_toxic_filtered['label'] = "inappropriate or offensive content"
+    df_toxic_filtered.rename(columns={'user_input': 'message'}, inplace=True)
+    df_toxic_filtered[['label', 'message']].to_csv("toxic.csv", index=False, header=True)
+    print("CSV file saved successfully.")
 
 
 if __name__ == "__main__":
     main()
+    
