@@ -13,7 +13,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, ChatSession
 import pandas as pd
 
-metadata = pd.read_csv("DiscordBot/metadata.csv")
+metadata = pd.read_csv("DiscordBot/datasets/metadata.csv")
 P_THRESHOLD = 0.8
 R_THRESHOLD = 3
 

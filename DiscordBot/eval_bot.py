@@ -6,12 +6,13 @@ import random
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 from datasets import load_dataset
 import re
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Initialize Vertex AI
 project_id = "cs152-424619"  # Giancarlo's project ID
 vertexai.init(project=project_id, location="us-central1")
 model = GenerativeModel(model_name="gemini-1.0-pro-002")
-
 
 def evaluate_strings_from_csv(csv_file_path):
     df = pd.read_csv(csv_file_path)
@@ -42,25 +43,44 @@ def evaluate_strings_from_csv(csv_file_path):
         try:
             evaluation_result = auto_report.text
         except ValueError:
-            evaluation_result = "Vertex General Error"
-
-        evaluation_result = evaluation_result.strip().lower().strip(
-            string.punctuation).rstrip(string.punctuation)
+            evaluation_result = "vertex safety error"
+        
+        def extract_category(evaluation_result):
+            categories = [
+                'not concerning content', 
+                'imminent danger', 
+                'inauthentic or underage profile', 
+                'spam or scam', 
+                'inappropriate or offensive content', 
+                'trying to move someone onto a different platform', 
+                'other concerning content',
+                'vertex safety error'
+            ]
+            
+            normalized_result = evaluation_result.strip().lower().strip(string.punctuation).rstrip(string.punctuation)
+            for category in categories:
+                if category in normalized_result:
+                    return category
+            return "error"
+        
+        
+        result = extract_category(evaluation_result)
         results.append({'string': text, 'label': label,
-                       'predicted_label': evaluation_result})
+                       'predicted_label': result})
 
     results_df = pd.DataFrame(results)
 
-    results_csv_file_path = 'evaluated_results.csv'
+    results_csv_file_path = 'datasets/vertex_results.csv'
     results_df.to_csv(results_csv_file_path, index=False)
     print(f"Evaluated results saved to {results_csv_file_path}")
-
     return results_df
 
 
 def analyze_results(results_df):
     true_labels = results_df['label']
     predicted_labels = results_df['predicted_label']
+    print(predicted_labels)
+    print(true_labels)
 
     accuracy_per_category = {}
     for category in results_df['label'].unique():
@@ -68,9 +88,14 @@ def analyze_results(results_df):
         accuracy = accuracy_score(true_labels[category_mask], predicted_labels[category_mask])
         accuracy_per_category[category] = accuracy
 
-    conf_matrix = confusion_matrix(true_labels, predicted_labels)
-    class_report = classification_report(true_labels, predicted_labels, zero_division=1)
+    y_labels = list(set(true_labels))
+    all_labels = list(set(true_labels))
+    all_labels.insert(0, "vertex safety error")
+    all_labels.insert(1, "error")
 
+    conf_matrix = confusion_matrix(true_labels, predicted_labels, labels=all_labels)
+    class_report = classification_report(true_labels, predicted_labels, labels=all_labels, zero_division=1)
+   
     print("Accuracy for each category:")
     for category, accuracy in accuracy_per_category.items():
         print(f"{category}: {accuracy}")
@@ -80,23 +105,72 @@ def analyze_results(results_df):
 
     print("\nClassification Report:")
     print(class_report)
+
+    conf_matrix = np.delete(conf_matrix, 0, axis=0)
+    conf_matrix = np.delete(conf_matrix, 1, axis=0)
+     
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues",
+                xticklabels=all_labels, yticklabels=y_labels,
+                cbar=False, linewidths=.5, linecolor='black')
+               
+    plt.xlabel('Predicted Labels')
+    plt.ylabel('True Labels')
+    plt.title('Confusion Matrix')
+    plt.xticks(rotation=45, ha='right')
+    plt.yticks(rotation=0)
+    plt.tight_layout()
+    plt.savefig('plots/confusion.png', bbox_inches='tight')
+
+    # 2. Vertex Error 
+    vertex_error_counts = (predicted_labels == "vertex safety error").groupby(true_labels).sum()
+    label_counts = true_labels.value_counts()
+    vertex_error_percentage = (vertex_error_counts / label_counts) * 100
+
+    plt.figure(figsize=(10, 6))
+    vertex_error_percentage.plot(kind='bar', color='skyblue')
+    plt.xlabel('True Labels')
+    plt.ylabel('Percentage of Vertex Safety Error')
+    plt.title('Percentage of Times Each Label was Marked as "Vertex Safety Error"')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig('plots/vertex_error.png')
+    
+    # 3. Overall Accuracy
+    plt.figure(figsize=(10, 6))
+    accuracy_series = pd.Series(accuracy_per_category)
+    accuracy_series.plot(kind='bar', color='lightgreen')
+    plt.xlabel('Categories')
+    plt.ylabel('Accuracy')
+    plt.title('Accuracy for Each Category')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig('plots/accuracy.png')
+
     
 def make_csv(csv_file_path):
     # FROM GPT
+    # TODO 1: dataset of not concerning content
+    # TODO 2: dataset of imminent danger
+    # TODO 3: dataoset of inauthentic profile
+    # TODO 4: dataset of moving platform
+    # TODO 5: dataset of other concerning content
+    
+    # FILLER
     categories = {
         "not concerning content": ["hi", "hello", "how are you?", "good morning", "nice to meet you"],
         "imminent danger": ["Help!", "I'm in danger!", "Emergency!", "Someone is following me."],
         "inauthentic or underage profile": ["I'm 15 years old.", "I'm not who I say I am.", "I'm using a fake ID."],
-        #"spam or scam": ["Congratulations! You've won a prize!", "Click this link to claim your reward.", "Free money!"],
-        #"inappropriate or offensive content": ["I hate you!", "You're ugly!", "You're stupid!"],
         "trying to move someone onto a different platform": ["Let's continue this conversation on WhatsApp.", "Add me on Snapchat for more.", "Message me on Instagram."],
         "other concerning content": ["I need help.", "Something doesn't feel right.", "I'm feeling unsafe."]
     }
-    
-    spam_df = pd.read_csv("spam_only.csv")
+  
+    spam_df = pd.read_csv("datasets/spam.csv")
+    # categories["spam or scam"] = spam_df["message"].head(10).tolist()
     categories["spam or scam"] = spam_df["message"].tolist()
     
-    toxic = pd.read_csv("toxic.csv")
+    toxic = pd.read_csv("datasets/inappropriate.csv")
+    # categories["inappropriate or offensive content"] = toxic["message"].head(10).tolist()
     categories["inappropriate or offensive content"] = toxic["message"].tolist()
 
     data = []
@@ -111,11 +185,11 @@ def make_csv(csv_file_path):
 
 
 def main():
-    csv_file_path = 'eval_bot.csv'
+    csv_file_path = 'datasets/eval_data.csv'
     make_csv(csv_file_path)
-    #evaluated_results_df = evaluate_strings_from_csv(csv_file_path)
-    #analyze_results(evaluated_results_df)
-
+    evaluated_results_df = evaluate_strings_from_csv(csv_file_path)
+    analyze_results(evaluated_results_df)
+    
 def process_spam():
     # https://www.kaggle.com/datasets/uciml/sms-spam-collection-dataset?select=spam.csv
     df = pd.read_csv('spam.csv', encoding='latin1', error_bad_lines=False)
