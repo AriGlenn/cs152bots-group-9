@@ -1,3 +1,4 @@
 *.log
 DiscordBot/tokens.json
 TABot/tokens.json
+saved_report_history.json

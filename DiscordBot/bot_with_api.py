@@ -12,7 +12,10 @@ import pdb
 import vertexai
 from vertexai.generative_models import GenerativeModel, ChatSession
 import pandas as pd
-metadata = pd.read_csv("metadata.csv")
+
+metadata = pd.read_csv("DiscordBot/metadata.csv")
+P_THRESHOLD = 0.8
+R_THRESHOLD = 3
 
 # Set up Vertex API
 # project_id = "cs152-bot-424101" # Gabbys project ID
@@ -209,15 +212,17 @@ class ModBot(discord.Client):
         if name in metadata["name"].values:
             row = metadata[metadata["name"] == name]
             probability_scammer = row["probability_scammer"].values[0]
-            print(f"The probability of {name} being a scammer is: {probability_scammer}")
         
+            print(f"The probability of {name} being a scammer is: {probability_scammer}") 
+            priority = "Low" if probability_scammer < 0.5 else "Medium"
+            
         
         if scores.strip() != "not concerning content":
             report_details["Reported user ID"] = message.author.id
             report_details["Reported user"] = message.author.name
             report_details["Reported by"] = "Auto report"
             report_details["Status"] = "Open"
-            report_details["Priority"] = "NULL"
+            report_details["Priority"] = priority
             report_details["Message Content"] = message.content
             report_details["Message ID"] = message.id
             report_details["Channel ID"] = message.channel.id
@@ -233,6 +238,13 @@ class ModBot(discord.Client):
             report_details["ID"] = self.counter
             self.counter += 1
             self.saved_report_history[reported_user].append(report_details)
+            
+            num_reports = len(self.saved_report_history[reported_user])
+            print(f"User {reported_user} has been reported {num_reports} times.")
+        
+            if probability_scammer > P_THRESHOLD or num_reports > R_THRESHOLD:
+                print("Take immediate action!")
+            
             # Save data to JSON file
             data_to_save = {
                 "counter": self.counter,
