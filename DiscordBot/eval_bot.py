@@ -17,13 +17,13 @@ model = GenerativeModel(model_name="gemini-1.0-pro-002")
 def evaluate_strings_from_csv(csv_file_path):
     df = pd.read_csv(csv_file_path)
 
-    if not {'string', 'label'}.issubset(df.columns):
-        raise ValueError("CSV file must contain 'string' and 'label' columns")
+    if not {'message', 'label'}.issubset(df.columns):
+        raise ValueError("CSV file must contain 'message' and 'label' columns")
 
     results = []
 
     for _, row in df.iterrows():
-        text = row['string']
+        text = row['message']
         label = row['label']
 
         auto_report_prompt = (
@@ -65,7 +65,7 @@ def evaluate_strings_from_csv(csv_file_path):
         
         
         result = extract_category(evaluation_result)
-        results.append({'string': text, 'label': label,
+        results.append({'message': text, 'label': label,
                        'predicted_label': result})
 
     results_df = pd.DataFrame(results)
@@ -91,7 +91,7 @@ def analyze_results(results_df):
     y_labels = list(set(true_labels))
     all_labels = list(set(true_labels))
     all_labels.insert(0, "vertex safety error")
-    all_labels.insert(1, "error")
+    all_labels.append("error")
 
     conf_matrix = confusion_matrix(true_labels, predicted_labels, labels=all_labels)
     class_report = classification_report(true_labels, predicted_labels, labels=all_labels, zero_division=1)
@@ -105,10 +105,10 @@ def analyze_results(results_df):
 
     print("\nClassification Report:")
     print(class_report)
-
+    
     conf_matrix = np.delete(conf_matrix, 0, axis=0)
-    conf_matrix = np.delete(conf_matrix, 1, axis=0)
-     
+    conf_matrix = np.delete(conf_matrix, -1, axis=0)
+    
     plt.figure(figsize=(12, 8))
     sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues",
                 xticklabels=all_labels, yticklabels=y_labels,
@@ -146,58 +146,98 @@ def analyze_results(results_df):
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.savefig('plots/accuracy.png')
+    
+    # 4. False Positive and False Negative Rates
+    non_concerning = 'not concerning content'
+    false_positive_rate = 0
+    false_negative_rate = 0
+    
+    false_positives = ((true_labels != non_concerning) & (predicted_labels == non_concerning)).sum()
+    false_negatives = ((true_labels == non_concerning) & (predicted_labels != non_concerning)).sum()
+    total_non_concerning = (true_labels == non_concerning).sum()
+    total_others = (true_labels != non_concerning).sum()
+
+    if total_others > 0:
+        false_positive_rate = (false_positives / total_others) * 100
+    else:
+        false_positive_rate = 0
+    
+    if total_non_concerning > 0:
+        false_negative_rate = (false_negatives / total_non_concerning) * 100
+    else:
+        false_negative_rate = 0
+
+    rates = pd.DataFrame({
+        'Rate': ['False Positive', 'False Negative'],
+        'Percentage': [false_positive_rate, false_negative_rate]
+    })
+
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x='Rate', y='Percentage', data=rates, palette=['red', 'blue'])
+    plt.xlabel('Error Type')
+    plt.ylabel('Percentage')
+    plt.title('False Positive and False Negative Rates')
+    plt.tight_layout()
+    plt.savefig('plots/false_positive_negative.png')
 
     
 def make_csv(csv_file_path):
-    # FROM GPT
-    # TODO 1: dataset of not concerning content
-    # TODO 2: dataset of imminent danger
-    # TODO 3: dataoset of inauthentic profile
-    # TODO 4: dataset of moving platform
-    # TODO 5: dataset of other concerning content
-    
-    # FILLER
-    categories = {
-        "not concerning content": ["hi", "hello", "how are you?", "good morning", "nice to meet you"],
-        "imminent danger": ["Help!", "I'm in danger!", "Emergency!", "Someone is following me."],
-        "inauthentic or underage profile": ["I'm 15 years old.", "I'm not who I say I am.", "I'm using a fake ID."],
-        "trying to move someone onto a different platform": ["Let's continue this conversation on WhatsApp.", "Add me on Snapchat for more.", "Message me on Instagram."],
-        "other concerning content": ["I need help.", "Something doesn't feel right.", "I'm feeling unsafe."]
-    }
-  
-    spam_df = pd.read_csv("datasets/spam.csv")
-    # categories["spam or scam"] = spam_df["message"].head(10).tolist()
-    categories["spam or scam"] = spam_df["message"].tolist()
-    
-    toxic = pd.read_csv("datasets/inappropriate.csv")
-    # categories["inappropriate or offensive content"] = toxic["message"].head(10).tolist()
-    categories["inappropriate or offensive content"] = toxic["message"].tolist()
+    spam_df = pd.read_csv("datasets/spam.csv", nrows = 200)
+    danger_df = pd.read_csv("datasets/danger.csv", nrows = 200)
+    benign_df = pd.read_csv("datasets/benign.csv", nrows= 200)
+    toxic_df = pd.read_csv("datasets/inappropriate.csv", nrows = 200)
+    other_df = pd.read_csv("datasets/other.csv", nrows=200)
+    platform_df = pd.read_csv("datasets/platform.csv",nrows=200)
+    underage_df = pd.read_csv("datasets/inauthentic.csv", nrows=200)
 
+    # Create the categories dictionary
+    categories = {
+        "spam or scam": spam_df["message"].tolist(),
+        "imminent danger": danger_df["message"].tolist(),
+        "not concerning content": benign_df["message"].tolist(),
+        "inappropriate or offensive content": toxic_df["message"].tolist(),
+        "other concerning content": other_df["message"].tolist(),
+        "trying to move someone onto a different platform": platform_df["message"].tolist(),
+        "inauthentic or underage profile": underage_df["message"].tolist()
+    }
+
+    # Prepare the data
     data = []
     for category, phrases in categories.items():
         for phrase in phrases:
-            data.append((phrase, category))
+            data.append((category, phrase))
 
-    random.shuffle(data)
-    df = pd.DataFrame(data, columns=['string', 'label'])
+    # Convert to DataFrame
+    data_df = pd.DataFrame(data, columns=["label", "message"])
+
+    # Shuffle the data
+    data_df = data_df.sample(frac=1, random_state=42).reset_index(drop=True)
+    df = pd.DataFrame(data_df, columns=['label', 'message'])
     df.to_csv(csv_file_path, index=False)
     print(f"CSV file created at {csv_file_path}")
 
 
 def main():
-    csv_file_path = 'datasets/eval_data.csv'
-    make_csv(csv_file_path)
-    evaluated_results_df = evaluate_strings_from_csv(csv_file_path)
-    analyze_results(evaluated_results_df)
-    
+    # csv_file_path = 'datasets/eval_data.csv'
+    # make_csv(csv_file_path)
+    # evaluated_results_df = evaluate_strings_from_csv(csv_file_path)
+    # analyze_results(evaluated_results_df)
+    results_csv_file_path = 'datasets/vertex_results.csv'
+    results_df = pd.read_csv(results_csv_file_path)
+    analyze_results(results_df)
+  
+  
+""" Extract spam samples from kaggle dataset """
 def process_spam():
     # https://www.kaggle.com/datasets/uciml/sms-spam-collection-dataset?select=spam.csv
-    df = pd.read_csv('spam.csv', encoding='latin1', error_bad_lines=False)
+    df = pd.read_csv('kaggle_spam.csv', encoding='latin1', error_bad_lines=False)
     df = df.dropna(axis=1, how='all')
     spam_df = df[df['label'] == 'spam']
     spam_df['label'] = spam_df['label'].replace('spam', 'spam or scam')
-    spam_df.to_csv('spam_only.csv', index=False, columns=['label', 'message'])
+    spam_df.to_csv('datasets/spam.csv', index=False, columns=['label', 'message'])
 
+  
+""" Extract innapropriate and not concerning examples from hugging face """
 def process_toxic():
     # https://huggingface.co/datasets/lmsys/toxic-chat/viewer/toxicchat0124/train?p=27&f[human_annotation][value]=%27True%27
     dataset = load_dataset("lmsys/toxic-chat", "toxicchat0124")
@@ -214,16 +254,56 @@ def process_toxic():
 
     df['user_input'] = df['user_input'].apply(preprocess_text)
 
-    df_toxic_filtered = df[(df['toxicity'] == 1) & 
+    df_toxic_filtered = df[(df['toxicity'] == True) & 
                         df['user_input'].notnull() &
                         (df['user_input'].apply(lambda x: count_words(x)) < 50)]
 
     df_toxic_filtered['label'] = "inappropriate or offensive content"
     df_toxic_filtered.rename(columns={'user_input': 'message'}, inplace=True)
-    df_toxic_filtered[['label', 'message']].to_csv("toxic.csv", index=False, header=True)
+    df_toxic_filtered['message'] = df_toxic_filtered['message'].str.replace('\n', ' ').str.replace('\r', ' ')
+    df_toxic_filtered[['label', 'message']].to_csv("datasets/inappropriate.csv", index=False, header=True)
+    
+    print("CSV file saved successfully.")
+    
+    df_benign_filtered = df[(df['toxicity'] == False) & 
+                        df['user_input'].notnull() &
+                        (df['user_input'].apply(lambda x: count_words(x)) < 50)]
+
+    df_benign_filtered['label'] = "not concerning content"
+    df_benign_filtered.rename(columns={'user_input': 'message'}, inplace=True)
+    df_benign_filtered['message'] = df_benign_filtered['message'].str.replace('\n', ' ').str.replace('\r', ' ')
+    df_benign_filtered[['label', 'message']].to_csv("datasets/benign.csv", index=False, header=True)
+
     print("CSV file saved successfully.")
 
 
+def process_danger():
+    # https://kaggle.com/datasets/julian3833/jigsaw-toxic-comment-classification-challenge?select=train.csv
+    df = pd.read_csv('datasets/jigsaw.csv', encoding='latin1')
+    df_filtered = df[(df['threat'] == True)].copy()
+    df_filtered.rename(columns={'comment_text': 'message'}, inplace=True)
+    df_filtered.rename(columns={'threat': 'label'}, inplace=True)
+    df_filtered['message'] = df_filtered['message'].str.replace('\n', ' ').str.replace('\r', ' ')
+    df_filtered['label'].replace(1, 'imminent danger', inplace=True)
+    df_filtered.to_csv('datasets/danger.csv', index=False, columns=['label', 'message'])
+    print("CSV file saved successfully.")
+
+""" 
+GPT prompt (3.5) for other CSV:
+
+Im developing a trust and safety project. I want to find datasets the correspond to the following message categories:
+
+categories = {
+    "inauthentic or underage profile": ["I'm 15 years old.", "I'm not who I say I am.", "I'm using a fake ID."],
+    "trying to move someone onto a different platform": ["Let's continue this conversation on WhatsApp.", "Add me on Snapchat for more.", "Message me on Instagram."],
+    "other concerning content": ["I need help.", "Something doesn't feel right.", "I'm feeling unsafe."]
+}
+
+Can you generate 3  different csv, of format: label, message with 100 examples for each?
+"""
+
+
+    
 if __name__ == "__main__":
     main()
     
