@@ -13,13 +13,14 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, ChatSession
 import pandas as pd
 
+# Import metadata
 metadata = pd.read_csv("DiscordBot/datasets/metadata.csv")
 P_THRESHOLD = 0.8
 R_THRESHOLD = 3
 
 # Set up Vertex API
-# project_id = "cs152-bot-424101" # Gabbys project ID
-project_id = "cs152-424619" # Giancarlos project ID 
+project_id = "cs152-bot-424101" # Gabbys project ID
+# project_id = "cs152-424619" # Giancarlos project ID 
 vertexai.init(project=project_id, location="us-central1")
 model = GenerativeModel(model_name="gemini-1.0-pro-002")
 chat = model.start_chat()
@@ -205,29 +206,37 @@ class ModBot(discord.Client):
         mod_channel = self.mod_channels[message.guild.id]
         print(f"****{type(mod_channel)}****")
 
-        # Create computer report and forward to mod channel if concerning
+        # Analyze message and user
         report_details = {}
         scores = self.eval_text(message.content)
         name = message.author.name
         if name in metadata["name"].values:
             row = metadata[metadata["name"] == name]
             probability_scammer = row["probability_scammer"].values[0]
-        
-            print(f"The probability of {name} being a scammer is: {probability_scammer}") 
-            priority = "Low" if probability_scammer < 0.5 else "Medium"
-            
-        
-        if scores.strip() != "not concerning content":
+            suspicion_score = row["probability_scammer"].values[0]
+            report_details["Suspicion score"] = suspicion_score
+
+            # If suspicious user is attempting to move off platform, warn user they matched with
+            if suspicion_score > 0.5 and scores.strip() == "trying to move someone onto a different platform":
+                # Notifying the reported user as a proxy for notifing their match
+                user = await client.fetch_user(message.author.id)
+                if user:
+                    await user.send(f"Hi! We've noticed that your match may be trying to move the conversation off the platform, so be cautious about sharing personal contact details or moving conversations off this platform with users you don't know well. Stay safe and happy dating!")
+                else:
+                    print(f"Failed to find user with ID {user_id}")
+
+        # If concerning content, create a report
+        scores = (scores.strip()).lower()
+        if scores != "not concerning content" and scores != "trying to move someone onto a different platform":
             report_details["Reported user ID"] = message.author.id
-            report_details["Reported user"] = message.author.name
+            report_details["Reported user"] = message.author.name 
             report_details["Reported by"] = "Auto report"
             report_details["Status"] = "Open"
-            report_details["Priority"] = priority
+            report_details["Priority"] = "NULL"
             report_details["Message Content"] = message.content
             report_details["Message ID"] = message.id
             report_details["Channel ID"] = message.channel.id
             report_details["Reported Reason"] = scores
-            report_details["Relevant danger/concern(s)"] = scores
 
             # Save report to JSON file
             # Check if individual has a saved report history (they have been reported before)
@@ -242,9 +251,6 @@ class ModBot(discord.Client):
             num_reports = len(self.saved_report_history[reported_user])
             print(f"User {reported_user} has been reported {num_reports} times.")
         
-            if probability_scammer > P_THRESHOLD or num_reports > R_THRESHOLD:
-                print("Take immediate action!")
-            
             # Save data to JSON file
             data_to_save = {
                 "counter": self.counter,
@@ -253,9 +259,9 @@ class ModBot(discord.Client):
             with open("saved_report_history.json", "w") as json_file:
                 json.dump(data_to_save, json_file, indent=4)
 
-            # Forward the message to the mod channel
-            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-            await mod_channel.send(self.code_format(scores))
+            # Forward the report to the mod channel
+            report_details_formatted = "\n".join([f"{i}:   *{j}*" for i, j in report_details.items()])
+            await self.mod_channel.send(f"🚨__**Reported Message:**__🚨\n{report_details_formatted}")
 
     
     def eval_text(self, message):
