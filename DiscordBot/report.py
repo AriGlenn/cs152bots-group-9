@@ -1,6 +1,9 @@
 from enum import Enum, auto
 import discord
 import re
+import pandas as pd
+
+metadata = pd.read_csv("datasets/metadata.csv")
 
 class State(Enum):
     REPORT_START = auto()
@@ -122,6 +125,13 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
+            
+            name = reported_message.author.name
+            if name in metadata["name"].values:
+                row = metadata[metadata["name"] == name]
+                suspicion_score = row["probability_scammer"].values[0]
+                self.details["Suspicion score"] = suspicion_score
+        
             # Record message details
             self.details["Reported user ID"] = reported_message.author.id
             self.details["Reported user"] = reported_message.author.name
